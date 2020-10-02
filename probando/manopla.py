@@ -1,6 +1,9 @@
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import cv2
+from PIL import Image
+import time
 
 """It helps visualising the portraits from the dataset."""
 
@@ -18,7 +21,7 @@ def plot_portraits(images, titles, h, w, n_row, n_col):
 
 
 dir = 'lfwcrop_grey/faces'
-celebrity_photos = os.listdir(dir)[1:1001]
+celebrity_photos = os.listdir(dir)[1:303]
 celebrity_images = [dir + '/' + photo for photo in celebrity_photos]
 images = np.array([plt.imread(image) for image in celebrity_images], dtype=np.float64)
 celebrity_names = [name[:name.find('0') - 1].replace("_", " ") for name in celebrity_photos]
@@ -54,22 +57,73 @@ def reconstruction(Y, C, M, h, w, image_index):
     return recovered_image
 
 
-photo = 'lfwcrop_grey/faces/Arnold_Schwarzenegger_0008.pgm'
-image = np.array([plt.imread(photo)], dtype=np.float64)
-plot_portraits(image, ["Test"], h, w, 1, 1)
-image = image.reshape(1, h * w) - np.mean(X, axis=0)
-print("Looking for Arnold Schwarzenegger\n")
-Pa = np.dot(image, C.T)
+# photo = 'lfwcrop_grey/faces/Arnold_Schwarzenegger_0008.pgm'
+# image = np.array([plt.imread(photo)], dtype=np.float64)
+# plot_portraits(image, ["Test"], h, w, 1, 1)
+# image = image.reshape(1, h * w) - np.mean(X, axis=0)
+# print("Looking for Arnold Schwarzenegger\n")
+# Pa = np.dot(image, C.T)
+#
+# distance = 100000000  # better would be : +infinity
+# closest = None
+# idx = -1
+# for i in range(P.shape[0]):
+#     delta = sum((P[i] - Pa[0]) ** 2)
+#     if delta < distance:
+#         distance = delta
+#         closest = P[i]
+#         idx = i
+#
+# print("Found:" + celebrity_names[idx])
+# plot_portraits([images[idx]], ["Recon"], h, w, 1, 1)
 
-distance = 100000000  # better would be : +infinity
-closest = None
-idx = -1
-for i in range(P.shape[0]):
-    delta = sum((P[i] - Pa[0]) ** 2)
-    if delta < distance:
-        distance = delta
-        closest = P[i]
-        idx = i
+def recon_face(image):
+    imga = image.reshape(1, 64 * 64) - np.mean(X, axis=0)
+    pa = np.dot(imga, C.T)
+    distance = 100000000  # better would be : +infinity
+    idx = -1
+    for i in range(P.shape[0]):
+        delta = sum((P[i] - pa[0]) ** 2)
+        if delta < distance:
+            distance = delta
+            idx = i
+    return idx
 
-print("Found:" + celebrity_names[idx])
-plot_portraits([images[idx]], ["Recon"], h, w, 1, 1)
+
+faceCascade = cv2.CascadeClassifier('Cascades/haarcascade_frontalface_default.xml')
+cap = cv2.VideoCapture(0)
+cap.set(3, 640)  # set Width
+cap.set(4, 480)  # set Height
+
+while True:
+    ret, img = cap.read()
+    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+    faces = faceCascade.detectMultiScale(
+        gray,
+        scaleFactor=1.2,
+        minNeighbors=5,
+        minSize=(20, 20)
+    )
+    for (x, y, w, h) in faces:
+        cv2.rectangle(img, (x, y), (x + w, y + h), (255, 0, 0), 2)
+        # he = y+h-25
+        # if he <= y+50:
+        #     continue
+        # wi = x+w-40
+        # if wi <= x+25:
+        #     continue
+        roi_gray = gray[y:y + h, x:x + w]
+        # roi_gray = gray[y+50:y + h-25, x+25:x + w-40]
+        roi_color = img[y:y + h, x:x + w]
+        cv2.putText(img, celebrity_names[recon_face(cv2.resize(roi_gray, (64, 64)))], (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
+        # plot_portraits([cv2.resize(roi_gray, (64, 64))], ["Recon"], 64, 64, 1, 1)
+        # photo = 'lfwcrop_grey/faces/Abbas_Kiarostami_0001.pgm'
+        # image = np.array([plt.imread(photo)], dtype=np.float64)
+        # cv2.putText(img, celebrity_names[recon_face(image)], (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
+    cv2.imshow('video', img)
+    k = cv2.waitKey(30) & 0xff
+    if k == 27:  # press 'ESC' to quit
+        break
+
+cap.release()
+cv2.destroyAllWindows()
