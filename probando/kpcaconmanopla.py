@@ -77,7 +77,7 @@ def kpca(X, gamma, n_components):
 
     mean = np.mean(X, axis=0)
     centered_data = X - mean
-    U, S, V = np.linalg.svd(centered_data)
+    U, S, V = np.linalg.svd(K)
     components = V[:n_components]
     projected = U[:, :n_components] * S[:n_components]
     return X_pc, components, mean, centered_data
@@ -86,6 +86,9 @@ def kpca(X, gamma, n_components):
 n_components = 10
 X = images.reshape(n_samples, h * w)
 P, C, M, Y = kpca(X, 10, n_components)
+# print(str(P.size) + " " + str(P[0].size))
+# P, C, M, Y = pca(X, n_components)
+# print(str(P.size) + " " + str(P[0].size))
 eigenfaces = C.reshape((n_components, h, w))
 eigenface_titles = ["eigenface %d" % i for i in range(eigenfaces.shape[0])]
 #plot_portraits(eigenfaces, eigenface_titles, h, w, 4, 4)
