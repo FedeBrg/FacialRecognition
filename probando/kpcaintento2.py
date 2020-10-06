@@ -80,7 +80,24 @@ def stepwise_kpca(X, gamma, n_components):
 
     return X_pc, alphas, lambdas
 
-n_components = 1
+def calculategamma( X ):
+    min_distance = np.empty(len(X))
+    filler = float("inf")
+    index = np.arange(min_distance.size)
+    np.put(min_distance, index, filler)
+    for i in range(0, len(X)):
+        for j in range(0, len(X)):
+            if j != i:
+                accum = 0
+                for k in range(0, len(X[i])):
+                    accum = accum + ((X[i][k]-X[j][k]) ** 2) ** (1/2)
+                if min_distance[i] > accum:
+                    min_distance[i] = accum
+    return 5 * np.mean(min_distance)
+
+
+
+n_components = 10
 X = images.reshape(n_samples, h * w)
 P, C, M, Y = pca(X, n_pc=n_components)
 eigenfaces = C.reshape((n_components, h, w))
@@ -88,7 +105,10 @@ eigenface_titles = ["eigenface %d" % i for i in range(eigenfaces.shape[0])]
 #plot_portraits(eigenfaces, eigenface_titles, h, w, 4, 4)
 
 plt.imshow(M.reshape(h, w), cmap=plt.cm.gray)
-gamma = 1/(2*22546**2)
+# gamma = 1/(2*22546**2)
+# print(gamma)
+gamma = 1/(2*calculategamma(X)**2)
+# print(gamma)
 X_pc, alphas, lambdas = stepwise_kpca(X, gamma=gamma, n_components=n_components)
 
 # def reconstruction(Y, C, M, h, w, image_index):
