@@ -3,7 +3,6 @@ import numpy as np
 import os
 import cv2
 from scipy.spatial.distance import pdist, squareform
-from scipy import exp
 from scipy.linalg import eigh
 from PIL import Image
 import time
