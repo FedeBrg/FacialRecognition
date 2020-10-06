@@ -99,12 +99,12 @@ def calculategamma( X ):
 
 n_components = 10
 X = images.reshape(n_samples, h * w)
-P, C, M, Y = pca(X, n_pc=n_components)
-eigenfaces = C.reshape((n_components, h, w))
-eigenface_titles = ["eigenface %d" % i for i in range(eigenfaces.shape[0])]
+# P, C, M, Y = pca(X, n_pc=n_components)
+# eigenfaces = C.reshape((n_components, h, w))
+# eigenface_titles = ["eigenface %d" % i for i in range(eigenfaces.shape[0])]
 #plot_portraits(eigenfaces, eigenface_titles, h, w, 4, 4)
+# plt.imshow(M.reshape(h, w), cmap=plt.cm.gray)
 
-plt.imshow(M.reshape(h, w), cmap=plt.cm.gray)
 # gamma = 1/(2*22546**2)
 # print(gamma)
 gamma = 1/(2*calculategamma(X)**2)
@@ -139,17 +139,17 @@ X_pc, alphas, lambdas = stepwise_kpca(X, gamma=gamma, n_components=n_components)
 # print("Found:" + celebrity_names[idx])
 # plot_portraits([images[idx]], ["Recon"], h, w, 1, 1)
 
-def recon_face(image):
-    imga = image.reshape(1, 64 * 64) - np.mean(X, axis=0)
-    pa = np.dot(imga, C.T)
-    distance = 100000000  # better would be : +infinity
-    idx = -1
-    for i in range(P.shape[0]):
-        delta = sum((P[i] - pa[0]) ** 2)
-        if delta < distance:
-            distance = delta
-            idx = i
-    return idx
+# def recon_face(image):
+#     imga = image.reshape(1, 64 * 64) - np.mean(X, axis=0)
+#     pa = np.dot(imga, C.T)
+#     distance = 100000000  # better would be : +infinity
+#     idx = -1
+#     for i in range(P.shape[0]):
+#         delta = sum((P[i] - pa[0]) ** 2)
+#         if delta < distance:
+#             distance = delta
+#             idx = i
+#     return idx
 
 def project_x(x_new, X, gamma, alphas, lambdas):
     x_new = x_new.reshape(1, 64 * 64)
