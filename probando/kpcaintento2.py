@@ -159,10 +159,10 @@ def project_x(x_new, X, gamma, alphas, lambdas):
 
 def recon_face_kpca(x_new, X, gamma, alphas, lambdas):
     x_new = project_x(x_new, X, gamma, alphas, lambdas)
-    distance = 100000000  # better would be : +infinity
+    distance = float("inf")  # better would be : +infinity
     idx = -1
     for i in range(X.shape[0]):
-        delta = sum((X_pc[i] - x_new[0]) ** 2)
+        delta = sum((X_pc[i] - x_new) ** 2)
         if delta < distance:
             distance = delta
             idx = i
