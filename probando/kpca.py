@@ -22,7 +22,7 @@ def plot_portraits(images, titles, h, w, n_row, n_col):
     plt.show()
 
 
-dir = 'lfwcrop_grey/nosotros'
+dir = 'lfwcrop_grey/our_faces'
 celebrity_photos = os.listdir(dir)[0:16]
 celebrity_images = [dir + '/' + photo for photo in celebrity_photos]
 images = np.array([cv2.resize(plt.imread(image), (64, 64)) for image in celebrity_images], dtype=np.float64)
@@ -40,20 +40,7 @@ def pca(X, n_pc):
     projected = U[:, :n_pc] * S[:n_pc]
     return projected, components, mean, centered_data
 
-def stepwise_kpca(X, gamma, n_components):
-    """
-    Implementation of a RBF kernel PCA.
-
-    Arguments:
-        X: A MxN dataset as NumPy array where the samples are stored as rows (M),
-           and the attributes defined as columns (N).
-        gamma: A free parameter (coefficient) for the RBF kernel.
-        n_components: The number of components to be returned.
-
-    Returns the k eigenvectors (alphas) that correspond to the k largest
-        eigenvalues (lambdas).
-
-    """
+def kpca(X, gamma, n_components):
     # Calculating the squared Euclidean distances for every pair of points
     # in the MxN dimensional dataset.
     sq_dists = pdist(X, 'sqeuclidean')
@@ -109,7 +96,7 @@ X = images.reshape(n_samples, h * w)
 # print(gamma)
 gamma = 1/(2*calculategamma(X)**2)
 # print(gamma)
-X_pc, alphas, lambdas = stepwise_kpca(X, gamma=gamma, n_components=n_components)
+X_pc, alphas, lambdas = kpca(X, gamma=gamma, n_components=n_components)
 
 # def reconstruction(Y, C, M, h, w, image_index):
 #     n_samples, n_features = Y.shape
