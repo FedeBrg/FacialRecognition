@@ -22,7 +22,7 @@ def plot_portraits(images, titles, h, w, n_row, n_col):
     plt.show()
 
 
-dir = 'lfwcrop_grey/nosotros'
+dir = 'lfwcrop_grey/our_faces'
 celebrity_photos = os.listdir(dir)[0:16]
 celebrity_images = [dir + '/' + photo for photo in celebrity_photos]
 images = np.array([cv2.resize(plt.imread(image), (64, 64)) for image in celebrity_images], dtype=np.float64)
@@ -41,67 +41,69 @@ def pca(X, n_pc):
     return projected, components, mean, centered_data
 
 def kpca(X, gamma, n_components):
-    """
-    RBF kernel PCA implementation.
-    Parameters
-    ------------
-    X: {NumPy ndarray}, shape = [n_examples, n_features]
-    gamma: float
-        Tuning parameter of the RBF kernel
-    n_components: int
-        Number of principal components to return
-    Returns
-    ------------
-    X_pc: {NumPy ndarray}, shape = [n_examples, k_features]
-        Projected dataset
-    """
-    # Calculate pairwise squared Euclidean distances
+    # Calculating the squared Euclidean distances for every pair of points
     # in the MxN dimensional dataset.
     sq_dists = pdist(X, 'sqeuclidean')
-    # Convert pairwise distances into a square matrix.
+
+    # Converting the pairwise distances into a symmetric MxM matrix.
     mat_sq_dists = squareform(sq_dists)
-    # Compute the symmetric kernel matrix.
+
+    # Computing the MxM kernel matrix.
     K = np.exp(-gamma * mat_sq_dists)
-    # Center the kernel matrix.
+
+    # Centering the symmetric NxN kernel matrix.
     N = K.shape[0]
     one_n = np.ones((N,N)) / N
-    K = K - one_n.dot(K) - K.dot(one_n) + one_n.dot(K).dot(one_n)
-    # Obtaining eigenpairs from the centered kernel matrix
-    # scipy.linalg.eigh returns them in ascending order
-    eigvals, eigvecs = eigh(K)
-    eigvals, eigvecs = eigvals[::-1], eigvecs[:, ::-1]
-    # Collect the top k eigenvectors (projected examples)
-    X_pc = np.column_stack([eigvecs[:, i]
-                           for i in range(n_components)])
-    X=K
-    mean = np.mean(X, axis=0)
-    centered_data = X - mean
-    U, S, V = np.linalg.svd(centered_data)
-    components = V[:n_components]
-    projected = U[:, :n_components] * S[:n_components]
-    components = eigvecs[:n_components]
-    return X_pc, components, mean, centered_data
+    K_norm = K - one_n.dot(K) - K.dot(one_n) + one_n.dot(K).dot(one_n)
+
+    # Obtaining eigenvalues in descending order with corresponding
+    # eigenvectors from the symmetric matrix.
+    eigvals, eigvecs = eigh(K_norm)
+
+    # Obtaining the i eigenvectors (alphas) that corresponds to the i highest eigenvalues (lambdas).
+    alphas = np.column_stack((eigvecs[:,-i] for i in range(1,n_components+1)))
+    lambdas = [eigvals[-i] for i in range(1,n_components+1)]
+    X_pc = np.column_stack((eigvecs[:, -i] for i in range(1, n_components + 1)))
+
+    return X_pc, alphas, lambdas
+
+def calculategamma( X ):
+    min_distance = np.empty(len(X))
+    filler = float("inf")
+    index = np.arange(min_distance.size)
+    np.put(min_distance, index, filler)
+    for i in range(0, len(X)):
+        for j in range(0, len(X)):
+            if j != i:
+                accum = 0
+                for k in range(0, len(X[i])):
+                    accum = accum + ((X[i][k]-X[j][k]) ** 2) ** (1/2)
+                if min_distance[i] > accum:
+                    min_distance[i] = accum
+    return 5 * np.mean(min_distance)
+
 
 
 n_components = 10
 X = images.reshape(n_samples, h * w)
-P, C, M, Y = kpca(X, 10, n_components)
-# print(str(C1.size) + " " + str(C1[0].size))
-# P, C, M, Y = pca(X, n_components)
-# print(str(C.size) + " " + str(C[0].size))
-# eigenfaces = C.reshape((n_components, h, w))
-# eigenface_titles = ["eigenface %d" % i for i in range(eigenfaces.shape[0])]
+P, C, M, Y = pca(X, n_pc=n_components)
+eigenfaces = C.reshape((n_components, h, w))
+eigenface_titles = ["eigenface %d" % i for i in range(eigenfaces.shape[0])]
 #plot_portraits(eigenfaces, eigenface_titles, h, w, 4, 4)
 
-# plt.imshow(M.reshape(h, w), cmap=plt.cm.gray)
+plt.imshow(M.reshape(h, w), cmap=plt.cm.gray)
+# gamma = 1/(2*22546**2)
+# print(gamma)
+gamma = 1/(2*calculategamma(X)**2)
+# print(gamma)
+X_pc, alphas, lambdas = kpca(X, gamma=gamma, n_components=n_components)
 
-
-def reconstruction(Y, C, M, h, w, image_index):
-    n_samples, n_features = Y.shape
-    weights = np.dot(Y, C.T)
-    centered_vector = np.dot(weights[image_index, :], C)
-    recovered_image = (M + centered_vector).reshape(h, w)
-    return recovered_image
+# def reconstruction(Y, C, M, h, w, image_index):
+#     n_samples, n_features = Y.shape
+#     weights = np.dot(Y, C.T)
+#     centered_vector = np.dot(weights[image_index, :], C)
+#     recovered_image = (M + centered_vector).reshape(h, w)
+#     return recovered_image
 
 
 # photo = 'lfwcrop_grey/faces/Arnold_Schwarzenegger_0008.pgm'
@@ -136,8 +138,24 @@ def recon_face(image):
             idx = i
     return idx
 
+def project_x(x_new, X, gamma, alphas, lambdas):
+    x_new = x_new.reshape(1, 64 * 64)
+    pair_dist = np.array([np.sum((x_new-row)**2) for row in X])
+    k = np.exp(-gamma * pair_dist)
+    return k.dot(alphas / lambdas)
 
-faceCascade = cv2.CascadeClassifier('Cascades/haarcascade_frontalface_default.xml')
+def recon_face_kpca(x_new, X, gamma, alphas, lambdas):
+    x_new = project_x(x_new, X, gamma, alphas, lambdas)
+    distance = float("inf")  # better would be : +infinity
+    idx = -1
+    for i in range(X.shape[0]):
+        delta = sum((X_pc[i] - x_new) ** 2)
+        if delta < distance:
+            distance = delta
+            idx = i
+    return idx
+
+faceCascade = cv2.CascadeClassifier('../Cascades/haarcascade_frontalface_default.xml')
 cap = cv2.VideoCapture(0)
 cap.set(3, 640)  # set Width
 cap.set(4, 480)  # set Height
@@ -162,7 +180,13 @@ while True:
         roi_gray = gray[y:y + h, x:x + w]
         # roi_gray = gray[y+50:y + h-25, x+25:x + w-40]
         roi_color = img[y:y + h, x:x + w]
-        cv2.putText(img, celebrity_names[recon_face(cv2.resize(roi_gray, (64, 64)))], (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
+        # cv2.putText(img, celebrity_names[recon_face(cv2.resize(roi_gray, (64, 64)))], (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
+        x_new = cv2.resize(roi_gray, (64, 64))
+        cv2.putText(img, celebrity_names[recon_face_kpca(x_new, X, gamma=gamma, alphas=alphas, lambdas=lambdas)], (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
+        # x_reproj = project_x(x_new, X, gamma=15, alphas=alphas, lambdas=lambdas)
+        # print("pca index:" + celebrity_names[recon_face(cv2.resize(roi_gray, (64, 64)))])
+        # index = recon_face_kpca(x_new, X, gamma=gamma, alphas=alphas, lambdas=lambdas)
+        # print("kpca index" + str(index))
         # plot_portraits([cv2.resize(roi_gray, (64, 64))], ["Recon"], 64, 64, 1, 1)
         # photo = 'lfwcrop_grey/faces/Abbas_Kiarostami_0001.pgm'
         # image = np.array([plt.imread(photo)], dtype=np.float64)

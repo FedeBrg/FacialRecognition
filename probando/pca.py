@@ -20,7 +20,7 @@ def plot_portraits(images, titles, h, w, n_row, n_col):
     plt.show()
 
 
-dir = 'lfwcrop_grey/nosotros'
+dir = 'lfwcrop_grey/our_faces'
 celebrity_photos = os.listdir(dir)[0:16]
 celebrity_images = [dir + '/' + photo for photo in celebrity_photos]
 images = np.array([cv2.resize(plt.imread(image), (64, 64)) for image in celebrity_images], dtype=np.float64)
