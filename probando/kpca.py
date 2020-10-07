@@ -23,7 +23,7 @@ def plot_portraits(images, titles, h, w, n_row, n_col):
 
 
 dir = 'lfwcrop_grey/our_faces'
-celebrity_photos = os.listdir(dir)[0:16]
+celebrity_photos = os.listdir(dir)
 celebrity_images = [dir + '/' + photo for photo in celebrity_photos]
 images = np.array([cv2.resize(plt.imread(image), (64, 64)) for image in celebrity_images], dtype=np.float64)
 celebrity_names = [name[:name.find('0') - 1].replace("_", " ") for name in celebrity_photos]
@@ -39,6 +39,7 @@ def pca(X, n_pc):
     components = V[:n_pc]
     projected = U[:, :n_pc] * S[:n_pc]
     return projected, components, mean, centered_data
+
 
 def kpca(X, gamma, n_components):
     # Calculating the squared Euclidean distances for every pair of points
@@ -58,16 +59,26 @@ def kpca(X, gamma, n_components):
 
     # Obtaining eigenvalues in descending order with corresponding
     # eigenvectors from the symmetric matrix.
-    eigvals, eigvecs = eigh(K_norm)
+    # eigvals, eigvecs = eigh(K_norm)
+    U, S, V = np.linalg.svd(K_norm)
 
     # Obtaining the i eigenvectors (alphas) that corresponds to the i highest eigenvalues (lambdas).
-    alphas = np.column_stack((eigvecs[:,-i] for i in range(1,n_components+1)))
-    lambdas = [eigvals[-i] for i in range(1,n_components+1)]
-    X_pc = np.column_stack((eigvecs[:, -i] for i in range(1, n_components + 1)))
+    # alphas2 = np.column_stack((eigvecs[:,-i] for i in range(1, n_components + 1)))
+    # lambdas2 = [eigvals[-i] for i in range(1, n_components+1)]
+
+    for i in range(0, len(U)):
+        U[i] = np.flip(U[i])
+
+    alphas = np.column_stack((U[:, -i] for i in range(1, n_components + 1)))
+    lambdas = [S[i] for i in range(1, n_components + 1)]
+
+
+    X_pc = np.column_stack((U[:, -i] for i in range(1, n_components + 1)))
 
     return X_pc, alphas, lambdas
 
-def calculategamma( X ):
+
+def calculategamma(X):
     min_distance = np.empty(len(X))
     filler = float("inf")
     index = np.arange(min_distance.size)
@@ -89,13 +100,13 @@ X = images.reshape(n_samples, h * w)
 # P, C, M, Y = pca(X, n_pc=n_components)
 # eigenfaces = C.reshape((n_components, h, w))
 # eigenface_titles = ["eigenface %d" % i for i in range(eigenfaces.shape[0])]
-#plot_portraits(eigenfaces, eigenface_titles, h, w, 4, 4)
+# plot_portraits(eigenfaces, eigenface_titles, h, w, 4, 4)
 # plt.imshow(M.reshape(h, w), cmap=plt.cm.gray)
 
 # gamma = 1/(2*22546**2)
 # print(gamma)
-gamma = 1/(2*calculategamma(X)**2)
-# print(gamma)
+gamma = 1/(2*(calculategamma(X)**2))
+# print  (gamma)
 X_pc, alphas, lambdas = kpca(X, gamma=gamma, n_components=n_components)
 
 # def reconstruction(Y, C, M, h, w, image_index):
@@ -183,10 +194,6 @@ while True:
         # cv2.putText(img, celebrity_names[recon_face(cv2.resize(roi_gray, (64, 64)))], (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
         x_new = cv2.resize(roi_gray, (64, 64))
         cv2.putText(img, celebrity_names[recon_face_kpca(x_new, X, gamma=gamma, alphas=alphas, lambdas=lambdas)], (x, y), cv2.FONT_HERSHEY_SIMPLEX, 1, (255, 0, 0), 2, cv2.LINE_AA)
-        # x_reproj = project_x(x_new, X, gamma=15, alphas=alphas, lambdas=lambdas)
-        # print("pca index:" + celebrity_names[recon_face(cv2.resize(roi_gray, (64, 64)))])
-        # index = recon_face_kpca(x_new, X, gamma=gamma, alphas=alphas, lambdas=lambdas)
-        # print("kpca index" + str(index))
         # plot_portraits([cv2.resize(roi_gray, (64, 64))], ["Recon"], 64, 64, 1, 1)
         # photo = 'lfwcrop_grey/faces/Abbas_Kiarostami_0001.pgm'
         # image = np.array([plt.imread(photo)], dtype=np.float64)
@@ -198,3 +205,19 @@ while True:
 
 cap.release()
 cv2.destroyAllWindows()
+
+
+# xdata = np.empty(len(X_pc), dtype=float)
+# ydata = np.empty(len(X_pc), dtype=float)
+# zdata = np.empty(len(X_pc), dtype=float)
+#
+# ax = plt.axes(projection='3d')
+# for i in range(0, len(X_pc)):
+#     xdata[i] = X_pc[i][0]
+#     ydata[i] = X_pc[i][1]
+#     zdata[i] = X_pc[i][2]
+# ax.scatter3D(xdata, ydata, zdata, c=zdata)
+# for i in range(0, len(X_pc)):
+#     ax.text(xdata[i], ydata[i], zdata[i], celebrity_names[i], size=7, zorder=1, color='k')
+# plt.show()
+
